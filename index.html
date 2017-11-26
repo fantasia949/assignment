@@ -376,6 +376,17 @@
                         }
                     }.bind(this),
                     pointerup: function (e) {
+                        // Workaround for touch event
+                        if (e.pointerType === 'touch') {
+                            const isDropzone = document.elementFromPoint(e.clientX, e.clientY) === this.dropZone;
+
+                            if (isDropzone) {
+                                this.dropzoneEvents.pointerup(e);
+                            }
+
+                            this.dropZone.enter = false;
+                        }
+
                         if (this.draggedWord) {
                             this.draggedWord.savePosition();
                             this.draggedWord.classList.remove('is-dragging');
@@ -395,6 +406,20 @@
                         this.container.classList.remove('is-dnd-mode');
                     }.bind(this),
                     pointermove: function (e) {
+                        // Workaround for touch event
+                        if (e.pointerType === 'touch') {
+                            const isDropzone = document.elementFromPoint(e.clientX, e.clientY) === this.dropZone;
+                            if (isDropzone) {
+                                if (!this.dropZone.enter) {
+                                    this.dropzoneEvents.pointerover(e);
+                                    this.dropZone.enter = true;
+                                }
+                            } else if (this.dropZone.enter) {
+                                this.dropzoneEvents.pointerleave(e);
+                                this.dropZone.enter = false;
+                            }
+                        }
+
                         const draggedWord = this.draggedWord;
                         const { width, height } = this.dim;
 
