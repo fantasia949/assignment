@@ -400,7 +400,7 @@
                         }
 
                         if (this.draggedWord) {
-                            this.draggedWord.savePosition();
+                            this.draggedWord.perform(() => this.draggedWord.revertPosition());
                             this.draggedWord.classList.remove('is-dragging');
                             this.draggedWord = undefined;
                         }
