@@ -362,7 +362,19 @@
                 this.instruction.textContent = `Form the phrase "${content}" on the line above`;
 
                 this.words = content.split(' ');
-                this.wordElements = this.words.map(word => new FLIPWord(word));
+
+                // borrow from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+                function shuffleArray(array) {
+                    for (let i = array.length - 1; i > 0; i--) {
+                        let j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
+                    return array;
+                }
+
+                const rangeXToPopulate = 100;
+
+                this.wordElements = shuffleArray([...this.words]).map((word, i) => new FLIPWord(word, i * rangeXToPopulate, rangeXToPopulate));
 
                 this.draggedWord = undefined;
                 this.droppedWords = [];
@@ -577,7 +589,7 @@
         class Word extends HTMLElement {
             get content() { return this.textContent }
 
-            constructor(content) {
+            constructor(content, minX, rangeX) {
                 super();
 
                 this.textContent = content;
@@ -585,7 +597,7 @@
 
                 this.setPosition({
                     top: Math.floor(Math.random() * 200) + 'px',
-                    left: Math.floor(Math.random() * 500) + 'px'
+                    left: Math.floor(Math.random() * rangeX + minX) + 'px'
                 });
 
                 this.savePosition();
