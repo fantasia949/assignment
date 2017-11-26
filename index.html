@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Assignment</title>
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Open+Sans" type="text/css">
+    <style>
+        :root {
+            --color-success: #41c864;
+            --color-warning: #eb4141;
+            --color-info: #d5d5d5;
+        }
+
+        body {
+            font-family: 'Open sans';
+            font-size: 16px;
+            background-color: #f4f4f4;
+
+            height: 100vh;
+            margin: 0;
+        }
+
+        .c-layout {
+            background-color: #fff;
+            border-radius: 2px;
+            box-shadow: 4px 4px 4px #ccc;
+        }
+
+        .c-layout__screen {
+            overflow: hidden;
+            padding: 1rem;
+            width: 620px;
+            height: 540px;
+
+            display: flex;
+            flex-direction: column;
+        }
+
+        .c-headline {
+            color: var(--color-info);
+            font-size: 60px;
+            font-weight: 500;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .c-headline--small {
+            font-size: 24px;
+        }
+
+        .c-word-container {
+            color: #000;
+            font-size: 21px;
+            user-select: none;
+            touch-action: none;
+
+            border: 1px dashed #fff;
+            flex: 0 0 50%;
+            width: calc(100% - 60px);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .c-word-container.is-dnd-mode {
+            border-color: #33f
+        }
+
+        .c-timer {
+            font-size: .75rem;
+            color: #888;
+            flex: 0 0 20%;
+        }
+
+        .c-score {
+            font-size: 60px;
+            color: #000;
+            margin-bottom: 2rem;
+        }
+
+        .c-word-box {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+        }
+
+        .c-word-dropzone {
+            height: 4rem;
+            min-width: 100px;
+            padding: 0 10px;
+        }
+
+        .c-word {
+            cursor: pointer;
+            user-select: none;
+
+            padding: .25rem;
+            position: absolute;
+        }
+
+        .c-word.is-dragging {
+            opacity: .4;
+            pointer-events: none;
+        }
+
+        .c-word-dropzone .c-word {
+            color: var(--color-success);
+            pointer-events: none;
+
+            position: initial;
+            top: auto;
+            left: auto;
+        }
+
+        .c-word-box-line {
+            background-color: #888;
+
+            height: 1px;
+            transition: background-color ease-out 150ms, transform ease-out 150ms;
+        }
+
+        .c-word-box.is-invalid .c-word-box-line {
+            background-color: var(--color-warning);
+            transform: scaleY(5);
+        }
+
+        .c-word-box.is-valid .c-word-box-line {
+            background-color: var(--color-success);
+            transform: scaleY(5);
+        }
+
+        .c-instruction {
+            color: var(--color-info);
+            font-size: .75rem;
+        }
+
+        .c-btn {
+            cursor: pointer;
+            color: #fff;
+            background-color: var(--color-success);
+            font-size: 18px;
+            text-transform: capitalize;
+
+            border: none;
+            padding: 1rem 4rem;
+        }
+
+        .u-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .u-center--stretch {
+            justify-content: stretch;
+        }
+    </style>
+</head>
+
+<body class="u-center">
+    <c-app class="c-layout"></c-app>
+
+    <template id="tScreenStart">
+        <h1 class="c-headline">word game</h1>
+        <button type="button" class="c-btn js-command-game" title="Start your game =)">start</button>
+    </template>
+
+    <template id="tScreenGame">
+        <c-timer class="c-timer"></c-timer>
+        <div class="c-word-container">
+            <div class="c-word-box">
+                <div class="c-word-dropzone u-center"></div>
+                <div class="c-word-box-line"></div>
+            </div>
+        </div>
+        <div class="c-instruction"></div>
+    </template>
+
+    <template id="tScreenScore">
+        <div class="c-headline c-headline--small">your score</div>
+        <c-time-label class="c-score"></c-time-label>
+        <button type="button" title="Play again" class="js-command-game c-btn">play again</button>
+    </template>
+
+    <script>
+        class App extends HTMLElement {
+            constructor() {
+                super();
+
+                this.screens = {
+                    start: StartScreen,
+                    game: GameScreen,
+                    score: ScoreScreen
+                }
+
+                this.props = { timespan: 2000, content: `It's all about the flow` };
+                this.selectScreen('start');
+            }
+
+            connectedCallback() {
+                this.$onCommand = this.onCommand.bind(this);
+                this.addEventListener('command', this.$onCommand);
+            }
+
+            disconnectedCallback() {
+                this.removeEventListener('command', this.$onCommand);
+                this.selectedScreen = undefined;
+            }
+
+            onCommand(e) {
+                const screen = e.detail.screenName;
+                if (screen !== this.selectedScreenName) {
+                    this.props = { ...this.props, ...e.detail.props };
+                    this.selectScreen(screen);
+                }
+            }
+
+            selectScreen(screenName) {
+                if (this.selectedScreen) {
+                    this.selectedScreen.remove();
+                }
+                this.selectedScreen = new this.screens[screenName](this.props);
+                this.appendChild(this.selectedScreen);
+                this.selectedScreenName = screenName;
+            }
+        }
+
+        class Screen extends HTMLElement {
+            constructor(templateId, props = {}) {
+                super();
+                const templateNode = document.getElementById(templateId);
+                if (!templateNode) {
+                    throw new Error(`Cannot find the associated template for screen component. ID: ${templateId}`);
+                }
+                const clone = document.importNode(templateNode.content, true);
+                this.classList.add('c-layout__screen', 'u-center', ...(props.classNames || []));
+                this.appendChild(clone);
+            }
+
+            dispatchCommand(data) {
+                var event = new CustomEvent('command', { detail: data, bubbles: true });
+                this.dispatchEvent(event);
+            }
+        }
+
+        class StartScreen extends Screen {
+            constructor() {
+                super('tScreenStart', {
+                    classNames: ['c-screen-start']
+                });
+                this.btnNav = this.querySelector('.js-command-game')
+            }
+
+            connectedCallback() {
+                this.$onStart = this.onStart.bind(this);
+                this.btnNav.addEventListener('click', this.$onStart);
+            }
+
+            disconnectedCallback() {
+                this.btnNav.removeEventListener('click', this.$onStart);
+                this.btnNav = undefined;
+            }
+
+            async onStart(e) {
+                const bgColor = getComputedStyle(e.target).backgroundColor;
+                await e.target.animate([
+                    {
+                        offset: 0,
+                        color: 'transparent',
+                        background: bgColor,
+                        transform: 'scale(1)'
+                    },
+                    {
+                        offset: .6,
+                        color: 'transparent',
+                        background: bgColor,
+                        transform: 'scale(20)'
+                    },
+                    {
+                        offset: 1,
+                        color: 'transparent',
+                        background: '#fff',
+                        transform: 'scale(20)'
+                    }
+                ], {
+                        easing: 'ease-out',
+                        duration: 600,
+                        fill: 'forwards'
+                    }).finished;
+
+                this.dispatchCommand({ screenName: 'game' });
+            }
+        }
+
+        class ScoreScreen extends Screen {
+            constructor({ timespan }) {
+                super("tScreenScore", {
+                    classNames: ["c-screen-score"]
+                });
+                const score = this.querySelector('.c-score');
+                score.render(timespan);
+
+                this.btnNav = this.querySelector('.js-command-game');
+            }
+
+            connectedCallback() {
+                this.$onStart = this.onStart.bind(this);
+                this.btnNav.addEventListener('click', this.$onStart);
+            }
+
+            disconnectedCallback() {
+                this.btnNav.removeEventListener('click', this.$onStart);
+                this.btnNav = undefined;
+            }
+
+            async onStart(e) {
+                const bgColor = getComputedStyle(e.target).backgroundColor;
+
+                await e.target.animate([
+                    {
+                        offset: 0,
+                        color: 'transparent',
+                        background: bgColor,
+                        transform: 'scale(1)'
+                    },
+                    {
+                        offset: .6,
+                        color: 'transparent',
+                        background: bgColor,
+                        transform: 'scale(20)'
+                    },
+                    {
+                        offset: 1,
+                        color: 'transparent',
+                        background: '#fff',
+                        transform: 'scale(20)'
+                    }
+                ], {
+                        easing: 'ease-out',
+                        duration: 600,
+                        fill: 'forwards'
+                    }).finished;
+
+                this.dispatchCommand({ screenName: 'game' });
+            }
+        }
+
+        class GameScreen extends Screen {
+            constructor({ content }) {
+                super('tScreenGame', {
+                    classNames: ['c-screen-game', 'u-center--stretch']
+                });
+
+                this.timer = this.querySelector('.c-timer');
+                this.instruction = this.querySelector('.c-instruction');
+                this.container = this.querySelector('.c-word-container');
+                this.box = this.querySelector('.c-word-box');
+                this.dropZone = this.querySelector('.c-word-dropzone');
+
+                this.instruction.textContent = `Form the phrase "${content}" on the line above`;
+
+                this.words = content.split(' ');
+                this.wordElements = this.words.map(word => new FLIPWord(word));
+
+                this.draggedWord = undefined;
+                this.droppedWords = [];
+
+                this.containerEvents = {
+                    pointerdown: function (e) {
+                        if (e.target instanceof Word) {
+                            this.draggedWord = e.target;
+                            this.draggedWord.classList.add('is-dragging');
+                            this.container.classList.add('is-dnd-mode');
+                        }
+                    }.bind(this),
+                    pointerup: function (e) {
+                        if (this.draggedWord) {
+                            this.draggedWord.savePosition();
+                            this.draggedWord.classList.remove('is-dragging');
+                            this.draggedWord = undefined;
+                        }
+
+                        this.container.classList.remove('is-dnd-mode');
+                    }.bind(this),
+                    pointerleave: function (e) {
+                        this.box.classList.remove('is-invalid', 'is-valid');
+
+                        if (this.draggedWord) {
+                            this.draggedWord.classList.remove('is-dragging');
+                            this.draggedWord = undefined;
+                        }
+
+                        this.container.classList.remove('is-dnd-mode');
+                    }.bind(this),
+                    pointermove: function (e) {
+                        const draggedWord = this.draggedWord;
+                        const { width, height } = this.dim;
+
+                        if (draggedWord) {
+                            const minmax = (min, max) => Math.max(Math.min(min, max), 0)
+                            draggedWord.style.top = minmax(parseInt(draggedWord.style.top, 10) + e.movementY, height - draggedWord.clientHeight) + 'px';
+                            draggedWord.style.left = minmax(parseInt(draggedWord.style.left, 10) + e.movementX, width - draggedWord.clientWidth) + 'px';
+                        }
+                    }.bind(this)
+                };
+
+                this.dropzoneEvents = {
+                    pointerover: function (e) {
+                        const draggedWord = this.draggedWord;
+                        if (draggedWord) {
+                            const accepted = this.process(draggedWord.content);
+                            this.box.classList.add(accepted ? 'is-valid' : 'is-invalid');
+                        }
+                    }.bind(this),
+                    pointerleave: function (e) {
+                        this.box.classList.remove('is-invalid', 'is-valid');
+                    }.bind(this),
+                    pointerup: function (e) {
+                        const draggedWord = this.draggedWord;
+
+                        if (draggedWord) {
+                            const accepted = this.process(draggedWord.content);
+
+                            if (accepted > 0) {
+                                this.putToBox(draggedWord);
+                            }
+
+                            if (accepted < 0) {
+                                this.putToBox(draggedWord, true);
+                            }
+
+                            if (!accepted) {
+                                this.draggedWord.perform(() => this.draggedWord.revertPosition());
+                            }
+
+                            if (this.droppedWords.length === this.words.length) {
+                                this.onScore();
+                            }
+                        }
+                    }.bind(this)
+                };
+            }
+
+            connectedCallback() {
+                // calculate the width of dropzone's line
+                for (const word of this.wordElements) {
+                    this.dropZone.appendChild(word);
+                }
+
+                this.dropZone.style.minWidth = this.dropZone.clientWidth + 'px';
+
+                for (const word of this.wordElements) {
+                    this.container.appendChild(word);
+                }
+
+                for (const eventName in this.containerEvents) {
+                    this.container.addEventListener(eventName, this.containerEvents[eventName]);
+                }
+
+                for (const eventName in this.dropzoneEvents) {
+                    this.dropZone.addEventListener(eventName, this.dropzoneEvents[eventName]);
+                }
+
+                const { width, height } = this.container.getBoundingClientRect();
+                this.dim = { width, height };
+            }
+
+            disconnectedCallback() {
+                for (const eventName in this.dropzoneEvents) {
+                    this.dropZone.removeEventListener(eventName, this.dropzoneEvents[eventName]);
+                }
+
+                for (const eventName in this.containerEvents) {
+                    this.container.removeEventListener(eventName, this.containerEvents[eventName]);
+                }
+
+                this.dropzoneEvents = undefined;
+                this.containerEvents = undefined;
+                this.timer = undefined;
+                this.instruction = undefined;
+                this.container = undefined;
+                this.box = undefined;
+                this.dropZone = undefined;
+                this.draggedWord = undefined;
+            }
+
+            async onScore() {
+                // have a small delay to animate and user has enough time to see the final result
+                await this.animate([
+                    { opacity: 1 }, { opacity: 0 }],
+                    { easing: 'ease-out', duration: 500, delay: 500, fill: 'forwards' }
+                ).finished;
+
+                this.dispatchCommand({
+                    screenName: 'score',
+                    props: { timespan: this.timer.timespan }
+                });
+            }
+
+            putToBox(word, prependOrAppend) {
+                for (const w of this.wordElements) {
+                    w.performFirst();
+                }
+
+                if (prependOrAppend) {
+                    this.droppedWords.push(word.content);
+                    this.dropZone.prepend(word);
+                } else {
+                    this.droppedWords.unshift(word.content);
+                    this.dropZone.append(word);
+                }
+
+                for (const w of this.wordElements) {
+                    w.performLast();
+                }
+
+                // animate words in another frame
+                requestIdleCallback(() => {
+                    for (const w of this.wordElements) {
+                        w.performInvertAndPlay();
+                    }
+                });
+            }
+
+            process(word) {
+                if (!word || this.droppedWords.includes(word)) {
+                    return;
+                }
+                if (this.droppedWords.length === 0) {
+                    return 1;
+                }
+                const index = this.words.indexOf(word);
+
+                if (index > 0) {
+                    const prevWord = this.words[index - 1];
+                    if (this.droppedWords.includes(prevWord)) {
+                        return 1;
+                    }
+
+                }
+                if (index < this.words.length - 1) {
+                    const nextWord = this.words[index + 1];
+                    if (this.droppedWords.includes(nextWord)) {
+                        return -1;
+                    }
+                }
+            }
+        }
+
+        class Word extends HTMLElement {
+            get content() { return this.textContent }
+
+            constructor(content) {
+                super();
+
+                this.textContent = content;
+                this.className = 'c-word';
+
+                this.setPosition({
+                    top: Math.floor(Math.random() * 200) + 'px',
+                    left: Math.floor(Math.random() * 500) + 'px'
+                });
+
+                this.savePosition();
+            }
+
+            savePosition() {
+                this.recentPos = { top: this.style.top, left: this.style.left };
+            }
+
+            revertPosition() {
+                this.setPosition(this.recentPos);
+            }
+
+            setPosition({ top, left }) {
+                this.style.top = top;
+                this.style.left = left;
+            }
+        }
+
+        class FLIPWord extends Word {
+
+            perform(action) {
+                this.performFirst();
+                action();
+                this.performLast();
+                this.performInvertAndPlay();
+            }
+
+            performFirst() {
+                this.fistDim = this.getBoundingClientRect();
+            }
+
+            performLast() {
+                this.lastDim = this.getBoundingClientRect();
+            }
+
+            performInvertAndPlay() {
+                const { x, y } = this.lastDim;
+                const dx = x - this.fistDim.x;
+                const dy = y - this.fistDim.y;
+
+                if (dx || dy) {
+                    this.animate([
+                        {
+                            transform: `translate(${-dx}px, ${-dy}px)`
+                        },
+                        {
+                            transform: `translate(0, 0)`
+                        }
+                    ], { duration: 150 }).finished.then(() => {
+                        this.fistDim = undefined;
+                        this.lastDim = undefined;
+                    });
+                }
+            }
+        }
+
+        class TimeLabel extends HTMLElement {
+            constructor() {
+                super();
+
+                const value = this.getAttribute('value');
+
+                if (value) {
+                    this.render(parseInt(value, 10));
+                }
+            }
+
+            render(timespan) {
+                timespan = timespan / 1000;
+                const minutes = Math.floor(timespan / 60)
+                    .toString()
+                    .padStart(2, '0');
+                const seconds = Math.floor(timespan % 60)
+                    .toString()
+                    .padStart(2, '0');
+                this.textContent = `${minutes}:${seconds}`;
+            }
+        }
+
+        class Timer extends HTMLElement {
+            constructor() {
+                super();
+                this.ticks = undefined;
+                this.token = undefined;
+                this.reset();
+                this.label = new TimeLabel();
+                this.appendChild(this.label);
+            }
+
+            connectedCallback() {
+                this.start();
+            }
+
+            disconnectedCallback() {
+                this.stop();
+                this.label = undefined;
+            }
+
+            stop() {
+                clearInterval(this.token);
+            }
+
+            reset() {
+                this.ticks = Date.now();
+            }
+
+            start() {
+                this.token = setInterval(() => this.render(Date.now()), 1000);
+                this.render(Date.now());
+            }
+
+            render(timestamp) {
+                this.timespan = (timestamp - this.ticks);
+                this.label.render(this.timespan);
+            }
+        }
+
+        customElements.define("c-word", Word);
+        customElements.define("c-flip-word", FLIPWord);
+        customElements.define("c-timer", Timer);
+        customElements.define("c-time-label", TimeLabel);
+        customElements.define("c-screen", Screen);
+        customElements.define("c-game-screen", GameScreen);
+        customElements.define("c-score-screen", ScoreScreen);
+        customElements.define("c-start-screen", StartScreen);
+        customElements.define("c-app", App);
+    </script>
+</body>
+
+</html>
