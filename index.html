@@ -313,10 +313,10 @@
                 this.btnNav = undefined;
             }
 
-            async onStart(e) {
+            onStart(e) {
                 const bgColor = getComputedStyle(e.target).backgroundColor;
 
-                await e.target.animate([
+                e.target.animate([
                     {
                         offset: 0,
                         color: 'transparent',
@@ -339,9 +339,7 @@
                         easing: 'ease-out',
                         duration: 600,
                         fill: 'forwards'
-                    }).finished;
-
-                this.dispatchCommand({ screenName: 'game' });
+                    }).onfinish = () => this.dispatchCommand({ screenName: 'game' });
             }
         }
 
