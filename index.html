@@ -374,7 +374,16 @@
 
                 const rangeXToPopulate = 100;
 
-                this.wordElements = shuffleArray([...this.words]).map((word, i) => new FLIPWord(word, i * rangeXToPopulate, rangeXToPopulate));
+                this.wordElements = shuffleArray([...this.words]).map((word, i) => {
+                    const wordElement = new FLIPWord(word);
+                    wordElement.setPosition({
+                        top: Math.floor(Math.random() * 200) + 'px',
+                        left: Math.floor(Math.random() * i * rangeXToPopulate + rangeXToPopulate) + 'px'
+                    });
+
+                    wordElement.savePosition();
+                    return wordElement;
+                });
 
                 this.draggedWord = undefined;
                 this.droppedWords = [];
@@ -590,18 +599,11 @@
         class Word extends HTMLElement {
             get content() { return this.textContent }
 
-            constructor(content, minX, rangeX) {
+            constructor(content) {
                 super();
 
                 this.textContent = content;
                 this.className = 'c-word';
-
-                this.setPosition({
-                    top: Math.floor(Math.random() * 200) + 'px',
-                    left: Math.floor(Math.random() * rangeX + minX) + 'px'
-                });
-
-                this.savePosition();
             }
 
             savePosition() {
