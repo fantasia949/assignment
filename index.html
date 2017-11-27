@@ -442,9 +442,11 @@
                         const { width, height } = this.dim;
 
                         if (draggedWord) {
-                            const minmax = (min, max) => Math.max(Math.min(min, max), 0)
-                            draggedWord.style.top = minmax(parseInt(draggedWord.style.top, 10) + e.movementY, height - draggedWord.clientHeight) + 'px';
-                            draggedWord.style.left = minmax(parseInt(draggedWord.style.left, 10) + e.movementX, width - draggedWord.clientWidth) + 'px';
+                            const minmax = (min, max) => Math.max(Math.min(min, max), 0);
+                            draggedWord.setPosition({
+                                top: minmax(parseInt(draggedWord.style.top, 10) + e.movementY, height - draggedWord.clientHeight) + 'px',
+                                left: minmax(parseInt(draggedWord.style.left, 10) + e.movementX, width - draggedWord.clientWidth) + 'px'
+                            });
                         }
                     }.bind(this)
                 };
