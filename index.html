@@ -87,9 +87,9 @@
         }
 
         .c-word-dropzone {
-            height: 4rem;
+            height: 3rem;
             min-width: 100px;
-            padding: 0 10px;
+            padding: 1rem 10px 0;
         }
 
         .c-word {
@@ -124,11 +124,13 @@
         .c-word-box.is-invalid .c-word-box-line {
             background-color: var(--color-warning);
             transform: scaleY(5);
+            transform-origin: bottom;
         }
 
         .c-word-box.is-valid .c-word-box-line {
             background-color: var(--color-success);
             transform: scaleY(5);
+            transform-origin: bottom;
         }
 
         .c-instruction {
@@ -369,12 +371,14 @@
                 }
 
                 const rangeXToPopulate = 100;
+                const rangeYToPopulate = parseInt(200 / this.words.length, 10);
+                const rangePadding = 20;
 
                 this.wordElements = shuffleArray([...this.words]).map((word, i) => {
                     const wordElement = new FLIPWord(word);
                     wordElement.setPosition({
-                        top: Math.floor(Math.random() * 200) + 'px',
-                        left: Math.floor(Math.random() * i * rangeXToPopulate + rangeXToPopulate) + 'px'
+                        left: Math.floor(Math.random() * i * rangeXToPopulate) + rangeXToPopulate + 'px',
+                        top: Math.max(Math.floor(Math.random() * i * rangeYToPopulate) + rangeYToPopulate, (i + 1) * rangeYToPopulate - rangePadding) + 'px'
                     });
 
                     wordElement.savePosition();
