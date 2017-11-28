@@ -472,16 +472,16 @@
                         if (draggedWord) {
                             const accepted = this.process(draggedWord.content);
 
-                            if (accepted > 0) {
-                                this.putToBox(draggedWord);
-                            }
-
-                            if (accepted < 0) {
-                                this.putToBox(draggedWord, true);
-                            }
-
-                            if (!accepted) {
-                                this.draggedWord.perform(() => this.draggedWord.revertPosition());
+                            switch (accepted) {
+                                case PROCESS_WORD_RESULT.APPEND:
+                                    this.putToBox(draggedWord);
+                                    break;
+                                case PROCESS_WORD_RESULT.PREPEND:
+                                    this.putToBox(draggedWord, true);
+                                case PROCESS_WORD_RESULT.INVALID:
+                                default:
+                                    this.draggedWord.perform(() => this.draggedWord.revertPosition());
+                                    break;
                             }
 
                             if (this.droppedWords.length === this.words.length) {
@@ -575,27 +575,35 @@
 
             process(word) {
                 if (!word || this.droppedWords.includes(word)) {
-                    return;
+                    return PROCESS_WORD_RESULT.INVALID;
                 }
                 if (this.droppedWords.length === 0) {
-                    return 1;
+                    return PROCESS_WORD_RESULT.APPEND;
                 }
                 const index = this.words.indexOf(word);
 
                 if (index > 0) {
                     const prevWord = this.words[index - 1];
                     if (this.droppedWords.includes(prevWord)) {
-                        return 1;
+                        return PROCESS_WORD_RESULT.APPEND;
                     }
 
                 }
                 if (index < this.words.length - 1) {
                     const nextWord = this.words[index + 1];
                     if (this.droppedWords.includes(nextWord)) {
-                        return -1;
+                        return PROCESS_WORD_RESULT.PREPEND;
                     }
                 }
+
+                return PROCESS_WORD_RESULT.INVALID;
             }
+        }
+
+        const PROCESS_WORD_RESULT = {
+            PREPEND: -1,
+            INVALID: 0,
+            APPEND: 1
         }
 
         class Word extends HTMLElement {
