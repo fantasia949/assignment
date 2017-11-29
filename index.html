@@ -197,7 +197,7 @@
                     score: ScoreScreen
                 }
 
-                this.props = { timespan: 2000, content: `It's all about the flow` };
+                this.props = { content: `It's all about the flow` };
                 this.selectScreen('start');
             }
 
@@ -230,14 +230,14 @@
         }
 
         class Screen extends HTMLElement {
-            constructor(templateId, props = {}) {
+            constructor(templateId, { classNames }) {
                 super();
                 const templateNode = document.getElementById(templateId);
                 if (!templateNode) {
                     throw new Error(`Cannot find the associated template for screen component. ID: ${templateId}`);
                 }
                 const clone = document.importNode(templateNode.content, true);
-                this.classList.add('c-layout__screen', 'u-center', ...(props.classNames || []));
+                this.classList.add('c-layout__screen', 'u-center', ...(classNames || []));
                 this.appendChild(clone);
             }
 
